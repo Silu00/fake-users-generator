@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
@@ -118,29 +117,6 @@
             font-weight: bold;
         }
 
-        .btn-primary {
-            background-color: var(--ink-black);
-            color: #fff;
-            border: none;
-            border-radius: 0;
-            padding: 1rem 2rem;
-            font-family: 'Syne', sans-serif;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 5px 5px 0px var(--accent-orange);
-            transition: all 0.2s;
-            position: relative;
-            top: 0;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--ink-black);
-            box-shadow: 2px 2px 0px var(--accent-orange);
-            transform: translate(3px, 3px);
-            color: var(--highlight);
-        }
-
         .btn-success {
             background-color: var(--bg-paper);
             color: var(--ink-black);
@@ -148,6 +124,7 @@
             border-radius: 50px;
             font-weight: 700;
             box-shadow: 3px 3px 0px var(--ink-black);
+            text-decoration: none;
         }
 
         .btn-success:hover {
@@ -239,6 +216,14 @@
             font-weight: bold;
         }
 
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.7);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .card.loading .loading-overlay { opacity: 1; pointer-events: all; }
+
         @media (max-width: 768px) {
             h1 { font-size: 2.2rem; }
             .card { box-shadow: 3px 3px 0px var(--ink-black); }
@@ -259,14 +244,16 @@
 
     <div class="card">
         <div class="card-body p-4 p-md-5">
-            <form action="/" method="get" class="row g-4 align-items-end">
-                <div class="col-md-3">
+            <form id="generatorForm" class="row g-4 align-items-end" onsubmit="return false;">
+
+                <div class="col-md-4">
                     <label class="form-label">Select Regions</label>
                     <div class="checkbox-wrapper">
                         {% for code, name in locales %}
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="locale" value="{{ code }}" id="loc_{{ code }}"
-                                    {% if code in current_locales %}checked{% endif %}>
+                                <input class="form-check-input locale-checkbox" type="checkbox" name="locale" value="{{ code }}" id="loc_{{ code }}"
+                                    {% if code in current_locales %}checked{% endif %}
+                                    onchange="updateData(true)">
                                 <label class="form-check-label" for="loc_{{ code }}">
                                     {{ name }} [{{ code }}]
                                 </label>
@@ -275,22 +262,17 @@
                     </div>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-5">
                     <label for="seed" class="form-label">Seed (Random Source)</label>
-                    <input type="text" class="form-control" name="seed" id="seed" value="{{ seed }}" placeholder="e.g., 'project-alpha'">
+                    <input type="text" class="form-control" name="seed" id="seed" value="{{ seed }}"
+                           placeholder="Type to generate..." oninput="debounceUpdate()">
                 </div>
-
-                <div class="col-md-2">
-                    <label for="count" class="form-label">Record Count</label>
-                    <input type="number" class="form-control" name="count" id="count" value="{{ user_count }}" min="1" max="1000">
-                </div>
-
-                <input type="hidden" name="batch_id" value="1">
 
                 <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary w-100">
-                        Generate Data
-                    </button>
+                    <div class="d-flex flex-column justify-content-end h-100">
+                         <div style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">* Auto-refresh enabled</div>
+                         <div style="font-size: 0.8rem; color: #666;">* Paging size: 20 records</div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -302,110 +284,168 @@
         </div>
     {% endif %}
 
-    <div class="card">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="card" id="resultsCard">
+        <div class="loading-overlay">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3" id="resultsHeader">
             <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem;">
-                Data Batch: <strong style="font-size: 1.4rem;">#{{ batch_id }}</strong>
+                Page: <strong style="font-size: 1.4rem;">#{{ batch_id }}</strong>
                 <span class="mx-2">|</span>
                 Seed: <span class="seed-badge">{{ seed }}</span>
-                <span class="mx-2">|</span>
-                Records: <strong>{{ user_count }}</strong>
                 <span class="mx-2">|</span>
                 Locales: <strong>{{ current_locales|join(', ') }}</strong>
             </div>
 
             <div class="d-flex gap-2">
-                {% if batch_id > 1 %}
-                    <a href="/?seed={{ seed }}{% for loc in current_locales %}&locale={{ loc }}{% endfor %}&batch_id={{ batch_id - 1 }}&count={{ user_count }}" class="btn btn-success btn-sm">
-                        &larr; Previous Page
-                    </a>
-                {% endif %}
-                <a href="/?seed={{ seed }}{% for loc in current_locales %}&locale={{ loc }}{% endfor %}&batch_id={{ batch_id + 1 }}&count={{ user_count }}" class="btn btn-success btn-sm">
+                <button onclick="changePage(-1)" class="btn btn-success btn-sm" {% if batch_id <= 1 %}disabled style="opacity:0.5; pointer-events:none;"{% endif %}>
+                    &larr; Previous Page
+                </button>
+                <button onclick="changePage(1)" class="btn btn-success btn-sm">
                     Next Page &rarr;
-                </a>
+                </button>
             </div>
         </div>
-    <div class="card-body p-0">
-       <div class="table-responsive">
-            <table class="table align-middle">
-                <thead>
-                    <tr>
-                        <th style="width: 50px">#</th>
-                        <th style="width: 100px">ID</th>
-                        <th style="width: 60px">Gender</th>
-                        <th>Personal Data / Address</th>
-                        <th>Contact</th>
-                        <th>Biometrics</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td style="font-weight: bold; opacity: 0.5;">{{ loop.index }}</td>
-                        <td>
-                            <code class="user-id-badge">{{ user.user_id }}</code>
-                        </td>
-                        <td>
-                            {% if user.gender == 'M' %}
-                                <div class="gender-badge gender-m" title="Male">M</div>
-                            {% else %}
-                                <div class="gender-badge gender-k" title="Female">F</div>
-                            {% endif %}
-                        </td>
 
-                        <td>
-                            <span class="strong-data">{{ user.full_name }}</span><br>
-                            <div style="margin-top: 6px; line-height: 1.3;">
-                                {{ user.address_full }}<br>
-                                <span class="geo-coords">
-                                    [LAT: {{ user.geo_lat|round(4) }} | LON: {{ user.geo_lon|round(4) }}]
-                                </span>
-                            </div>
-                        </td>
-
-                        <td>
-                            <span class="data-label">PHONE NUMBER</span>
-                            <span style="font-weight: 600;">{{ user.phone_number }}</span><br>
-                            <span class="data-label mt-2">EMAIL ADDRESS</span>
-                            <a href="mailto:{{ user.email }}">{{ user.email_address }}</a>
-                        </td>
-
-                        <td>
-                            <div class="row g-2" style="font-size: 0.85rem; max-width: 250px;">
-                                <div class="col-6">
-                                    <span class="data-label">Height</span> <strong>{{ user.height_cm }}</strong> cm
-                                </div>
-                                <div class="col-6">
-                                    <span class="data-label">Weight</span> <strong>{{ user.weight_kg }}</strong> kg
-                                </div>
-                                <div class="col-12 mt-1" style="border-top: 1px dashed #ccc; padding-top: 4px;">
-                                    <span class="text-muted">Body build:</span> {{ user.body_build }}<br>
-                                    <span class="text-muted">Eyes color:</span> {{ user.eye_color }}<br>
-                                    <span class="text-muted">Hair color:</span> {{ user.hair_color }}<br>
-                                    <span class="text-muted">Skin tone: </span> {{ user.skin_tone}}
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
+        <div class="card-body p-0">
+           <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
                         <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <div style="font-size: 1.5rem; opacity: 0.3; font-weight: bold;">NO DATA IN BUFFER</div>
-                                <div class="text-muted">Select at least one region and click GENERATE</div>
+                            <th style="width: 50px">#</th>
+                            <th style="width: 100px">ID</th>
+                            <th style="width: 60px">Gender</th>
+                            <th>Personal Data / Address</th>
+                            <th>Contact</th>
+                            <th>Biometrics</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        {% for user in users %}
+                        <tr>
+                            <td style="font-weight: bold; opacity: 0.5;">{{ loop.index }}</td>
+                            <td><code class="user-id-badge">{{ user.user_id }}</code></td>
+                            <td>
+                                {% if user.gender == 'M' %}
+                                    <div class="gender-badge gender-m" title="Male">M</div>
+                                {% else %}
+                                    <div class="gender-badge gender-k" title="Female">F</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="strong-data">{{ user.full_name }}</span><br>
+                                <div style="margin-top: 6px; line-height: 1.3;">
+                                    {{ user.address_full }}<br>
+                                    <span class="geo-coords">
+                                        [LAT: {{ user.geo_lat|round(4) }} | LON: {{ user.geo_lon|round(4) }}]
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="data-label">PHONE NUMBER</span>
+                                <span style="font-weight: 600;">{{ user.phone_number }}</span><br>
+                                <span class="data-label mt-2">EMAIL ADDRESS</span>
+                                <a href="mailto:{{ user.email }}">{{ user.email_address }}</a>
+                            </td>
+                            <td>
+                                <div class="row g-2" style="font-size: 0.85rem; max-width: 250px;">
+                                    <div class="col-6">
+                                        <span class="data-label">Height</span> <strong>{{ user.height_cm }}</strong> cm
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="data-label">Weight</span> <strong>{{ user.weight_kg }}</strong> kg
+                                    </div>
+                                    <div class="col-12 mt-1" style="border-top: 1px dashed #ccc; padding-top: 4px;">
+                                        <span class="text-muted">Body build:</span> {{ user.body_build }}<br>
+                                        <span class="text-muted">Eyes color:</span> {{ user.eye_color }}<br>
+                                        <span class="text-muted">Hair color:</span> {{ user.hair_color }}<br>
+                                        <span class="text-muted">Skin tone: </span> (( user.skin_tone }}
+                                    </div>
+                                </div>
                             </td>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div style="font-size: 1.5rem; opacity: 0.3; font-weight: bold;">NO DATA</div>
+                                    <div class="text-muted">Select at least one region to generate data</div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+
+    <footer class="text-center py-4 mt-5" style="opacity: 0.5; font-size: 0.8rem;">
+        &copy; 2025 Project Fake Data. Designed by Hubert Siluk.
+    </footer>
 </div>
 
-<footer class="text-center py-4 mt-5" style="opacity: 0.5; font-size: 0.8rem;">
-    &copy; 2025 Project Fake Data. Designed by Hubert Siluk.
-</footer>
+<script>
+    let timeout = null;
+    let currentBatchId = {{ batch_id }};
 
-</div>
+    function debounceUpdate() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            updateData(true);
+        }, 500);
+    }
+
+    function changePage(direction) {
+        currentBatchId += direction;
+        if (currentBatchId < 1) currentBatchId = 1;
+        updateData(false);
+    }
+
+    function updateData(resetPage) {
+        if (resetPage) {
+            currentBatchId = 1;
+        }
+
+        const seed = document.getElementById('seed').value;
+
+        const checkboxes = document.querySelectorAll('.locale-checkbox:checked');
+        let localeQuery = '';
+        checkboxes.forEach(cb => {
+            localeQuery += `&locale=${cb.value}`;
+        });
+
+        if (checkboxes.length === 0) {
+             localeQuery = '&locale=en_US';
+        }
+
+        const url = `/?seed=${encodeURIComponent(seed)}${localeQuery}&batch_id=${currentBatchId}`;
+
+        document.getElementById('resultsCard').classList.add('loading');
+
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const newTableBody = doc.getElementById('dataTableBody').innerHTML;
+                document.getElementById('dataTableBody').innerHTML = newTableBody;
+
+                const newHeader = doc.getElementById('resultsHeader').innerHTML;
+                document.getElementById('resultsHeader').innerHTML = newHeader;
+
+                window.history.pushState({}, '', url);
+
+                document.getElementById('resultsCard').classList.remove('loading');
+            })
+            .catch(err => {
+                console.error('Error fetching data:', err);
+                document.getElementById('resultsCard').classList.remove('loading');
+            });
+    }
+</script>
+
 </body>
-
 </html>
