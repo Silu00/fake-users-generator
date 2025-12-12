@@ -1,19 +1,37 @@
-This project is a Web application that generates random, fake user information using SQL Stored Procedures for data generation logic and Python for the web interface. There is link to an app: https://task-6-faker-production.up.railway.app/
+# 🎭 Fake Users Data Generator
 
-Application allows users to generate batches of fake user data (names, addresses, phone numbers, etc.) based on a selected locale and a seed value. The core logic for generating data is implemented exclusively within the database using Stored Procedures to ensure performance and separation of concerns.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=railway)](https://task-6-faker-production.up.railway.app/)
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
+![Faker](https://img.shields.io/badge/Library-Faker-orange)
 
-App ensures reproducibility: using the same seed and locale will always produce the exact same sequence of data.
+A powerful web-based tool aimed at developers and testers who need to generate realistic synthetic data on the fly. This application allows users to create, preview, and download massive datasets for testing purposes without writing a single line of code.
 
-Features:
-* Locale Support: Generate data specific to regions (e.g., en_US, de_DE, pl_PL).
-  * Single extensible database design using a [names] table with a [locale] column.
-* Deterministic Generation: Identical seeds produce identical results (dependent on locale, batch index, and position).
-* High Performance:
-  * Logic resides in SQL Stored Procedures.
-  * Optimized for generating batches (10 to 1000000 records).
-* Rich User Data:
-  * Full Name (with optional titles, middle names).
-  * Localized Address.
-  * Phone Numbers and Emails.
-  * Physical Attributes (Height, Weight, Eye Color, Skin Tone).
-  * Geographic Coordinates (Uniformly distributed on a sphere).
+## Live Application
+**Access the tool here:** [https://task-6-faker-production.up.railway.app/](https://task-6-faker-production.up.railway.app/)
+
+*(Hosted on Railway)*
+
+## Project Overview
+
+Testing applications with "Lorem Ipsum" or generic data often fails to reveal real-world edge cases. This project solves that problem by providing a user-friendly interface to generate **context-aware** fake data (names, addresses, emails, phone numbers).
+
+**Key Use Cases:**
+* **Database Seeding:** Quickly populate SQL/NoSQL databases with thousands of records.
+* **QA & Testing:** Generate edge-case data (e.g., long names, special characters in addresses).
+* **Data Anonymization:** Create replacement datasets that maintain the statistical properties of real data.
+
+## Features
+
+* **Web Interface:** No installation required; generate data directly in the browser.
+* **Realistic Data:** Powered by the `Faker` library to generate plausible identities.
+* **Customizable Parameters:**
+    * **Locale Support:** Generate data specific to different regions (e.g., `pl_PL`, `en_US`).
+    * **Error Injection:** Simulate "dirty" data (typos, swapped characters) to test system robustness.
+    * **Seed Control:** Ensure reproducibility of generated data.
+
+## Tech Stack
+
+* **Language:** Python 3.x
+* **Core Logic:** Faker Library
+* **Web Framework:** Flask 
+* **Deployment:** Railway
